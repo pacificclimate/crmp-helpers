@@ -20,24 +20,34 @@ def main(args):
 
     sesh.begin_nested()
 
+    records = 0
+    updates = 0
+
     try:
-        with open(resource_filename('crmp-helpers', '/data/provs_and_elevs_metadata_patch_20151005.csv'), 'rb') as f:
+        with open(args.fname, 'rb') as f:
             reader = csv.DictReader(f)
-            '''
-            header: "station_id","history_id","station_name","lon","lat","province","elev","freq","network_id","native_id"
-            '''
             for row in reader:
-                hid = row['history_id']
-                q = sesh.query(History).filter(History.id == hid)
-                r = q.all()
+                records += 1
+                hid = row[args.hidcolname]
+                try:
+                    q = sesh.query(History).filter(History.id == hid)
+                    r = q.all()
 
-                # Basic check for borkiness
-                if len(r) != 1:
-                    raise Exception('Multiple History ids found. This should never happen')
+                    # Basic check for borkiness
+                    if len(r) != 1:
+                        raise Exception('Multiple History ids found. This should never happen')
 
-                hist = q.first()
-                hist.elevation = row['elev']
+                    hist = q.first()
+                    element = getattr(hist, args.dbname)
+                    element = row[args.colname]
+                    updates += 1
 
+                except Exception as e:
+                    if args.supress:
+                        continue
+                    else:
+                        raise e
+        log.info('Sucessfully inserted {} of {} entries into the session'.format(updates, records))
     except:
         log.exception('An error has occured, rolling back')
         sesh.rollback()
@@ -54,10 +64,17 @@ def main(args):
 if __name__ == '__main__':
 
     parser = ArgumentParser()
+    parser.add_argument('hidcolname', help='Column name containing the history_id to modify'),
+    parser.add_argument('colname', help='Column name containing the data to insert'),
+    parser.add_argument('dbname', choices=['elevation', 'province'],
+                        help='meta_history entity name to update'),
+    parser.add_argument('fname', help='Path to csv file being processed'),
     parser.add_argument('-c', '--connection_string', required=True,
-                         help='PostgreSQL connection string of form:\n\tdialect+driver://username:password@host:port/database\nExamples:\n\tpostgresql://scott:tiger@localhost/mydatabase\n\tpostgresql+psycopg2://scott:tiger@localhost/mydatabase\n\tpostgresql+pg8000://scott:tiger@localhost/mydatabase')
-    parser.add_argument('-D', '--diag', default=True, action="store_true",
+                        help='PostgreSQL connection string of form:\n\tdialect+driver://username:password@host:port/database\nExamples:\n\tpostgresql://scott:tiger@localhost/mydatabase\n\tpostgresql+psycopg2://scott:tiger@localhost/mydatabase\n\tpostgresql+pg8000://scott:tiger@localhost/mydatabase')
+    parser.add_argument('-d', '--diag', default=True, action="store_true",
                         help="Turn on diagnostic mode (no commits)")
+    parser.add_argument('-s', '--supress', default=False, action="store_true",
+                        help="Supress insertion/lookup errors. Defaults to False.")
 
     args = parser.parse_args()
     main(args)
