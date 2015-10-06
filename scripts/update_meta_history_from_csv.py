@@ -67,6 +67,7 @@ def main(args):
             log.info('Diagnostic mode, rolling back all transactions')
             sesh.rollback()
     finally:
+        sesh.commit()
         sesh.close()
 
 if __name__ == '__main__':
