@@ -11,9 +11,5 @@ setup(
     author_email="bveerman@uvic.ca",
     packages=find_packages(),
     install_requires = ['pycds >= 2.0.0',
-                        'sqlalchemy'],
-    package_data = {
-        'crmp-helpers': ["data/*.csv"],
-        },
-    include_package_data=True
+                        'sqlalchemy']
     )
