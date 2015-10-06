@@ -22,12 +22,18 @@ def main(args):
 
     records = 0
     updates = 0
+    errors = 0
 
     try:
         with open(args.fname, 'rb') as f:
             reader = csv.DictReader(f)
             for row in reader:
                 records += 1
+
+                entry = row[args.colname]
+                if entry == 'NA':
+                    continue
+
                 hid = row[args.hidcolname]
                 try:
                     q = sesh.query(History).filter(History.id == hid)
@@ -37,17 +43,18 @@ def main(args):
                     if len(r) != 1:
                         raise Exception('Multiple History ids found. This should never happen')
 
-                    hist = q.first()
-                    element = getattr(hist, args.dbname)
-                    element = row[args.colname]
+                    hist = r[0]
+                    element = setattr(hist, args.dbname, entry)
                     updates += 1
 
                 except Exception as e:
                     if args.supress:
+                        errors += 1
+                        log.warning('Unable to update history_id {} field {} with {}'.format(hid, args.dbname, entry))
                         continue
                     else:
                         raise e
-        log.info('Sucessfully inserted {} of {} entries into the session'.format(updates, records))
+        log.info('Sucessfully inserted {} of {} entries into the session with {} errors'.format(updates, records, errors))
 
     except:
         log.exception('An error has occured, rolling back')
