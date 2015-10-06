@@ -48,16 +48,17 @@ def main(args):
                     else:
                         raise e
         log.info('Sucessfully inserted {} of {} entries into the session'.format(updates, records))
+
     except:
         log.exception('An error has occured, rolling back')
         sesh.rollback()
     else:
-        if args.diag:
-            log.info('Diagnostic mode, rolling back all transactions')
-            sesh.rollback()
-        else:
+        if args.commit:
             log.info('Commiting the session')
             sesh.commit()
+        else:
+            log.info('Diagnostic mode, rolling back all transactions')
+            sesh.rollback()
     finally:
         sesh.close()
 
@@ -67,12 +68,12 @@ if __name__ == '__main__':
     parser.add_argument('hidcolname', help='Column name containing the history_id to modify'),
     parser.add_argument('colname', help='Column name containing the data to insert'),
     parser.add_argument('dbname', choices=['elevation', 'province'],
-                        help='meta_history entity name to update'),
+                        help='meta_history entity name to update. Valid entries are "elevation" and "province"'),
     parser.add_argument('fname', help='Path to csv file being processed'),
     parser.add_argument('-c', '--connection_string', required=True,
                         help='PostgreSQL connection string of form:\n\tdialect+driver://username:password@host:port/database\nExamples:\n\tpostgresql://scott:tiger@localhost/mydatabase\n\tpostgresql+psycopg2://scott:tiger@localhost/mydatabase\n\tpostgresql+pg8000://scott:tiger@localhost/mydatabase')
-    parser.add_argument('-d', '--diag', default=True, action="store_true",
-                        help="Turn on diagnostic mode (no commits)")
+    parser.add_argument('--commit', default=False, action="store_true",
+                        help="Actually commit the session. Default is to roll back"),
     parser.add_argument('-s', '--supress', default=False, action="store_true",
                         help="Supress insertion/lookup errors. Defaults to False.")
 
